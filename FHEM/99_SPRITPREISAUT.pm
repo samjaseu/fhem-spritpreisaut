@@ -29,32 +29,45 @@ sub SPRITPREISAUT_Define() {
 	my @args = split('[ \t]+', $def);
 	
 	if(int(@args) < 8) {
-		return "too few parameters: define <name> SPRITPREISAUT <searchby> <code> <type> <fuel> <include> <interval>";
+		if($args[2] eq "address") {
+			return "too few parameters: define <name> SPRITPREISAUT <searchby> <latitude> <longitude> <fuelType> <include> <interval>";
+		} elsif($args[2] eq "region") {
+			return "too few parameters: define <name> SPRITPREISAUT <searchby> <code> <type> <fuelType> <include> <interval>";
+		}
 	}
+	
 	
 	my $fuelType = "";
 	my $dt       = gettimeofday();
 	
-	$hash->{DEFINETIME} = $dt;
+	$hash->{ModuleVersion} = "0.2";
+	$hash->{DEFINETIME}    = $dt;
 	
-	$hash->{name}       = $args[0];
-	$hash->{searchby}   = $args[2];
-	$hash->{code}       = $args[3];
-	$hash->{type}       = $args[4];
-	$hash->{fuel}       = $args[5];
-	$hash->{include}    = $args[6];
-	$hash->{Interval}   = $args[7];
+	$hash->{name}          = $args[0];
+	$hash->{searchby}      = $args[2];
 	
-	$hash->{ModuleVersion} = "0.1";
-	$hash->{MainURL}       = "https://api.e-control.at/sprit/1.0/search/gas-stations/by-$hash->{searchby}?code=$hash->{code}&type=$hash->{type}&fuelType=$hash->{fuel}&includeClosed=$hash->{include}";
-
-	if( $hash->{fuel} eq "DIE" ) {
-		$fuelType = "Diesel";
-	} elsif( $hash->{fuel} eq "SUP" ) {
-		$fuelType = "Super95";
-	} elsif( $hash->{fuel} eq "GAS" ) {
-		$fuelType = "Gas";
+	if($hash->{searchby} eq "region") {
+		$hash->{code}      = $args[3];
+		$hash->{type}      = $args[4];
+		$hash->{fuelType}  = $args[5];
+		$hash->{include}   = $args[6];
+		$hash->{Interval}  = $args[7];
+		
+		$hash->{MainURL}   = "https://api.e-control.at/sprit/1.0/search/gas-stations/by-$hash->{searchby}?code=$hash->{code}&type=$hash->{type}&fuelType=$hash->{fuelType}&includeClosed=$hash->{include}";
+	} elsif($hash->{searchby} eq "address") {
+		$hash->{latitude}  = $args[3];
+		$hash->{longitude} = $args[4];
+		$hash->{fuelType}  = $args[5];
+		$hash->{include}   = $args[6];
+		$hash->{Interval}  = $args[7];
+		
+		$hash->{MainURL}   = "https://api.e-control.at/sprit/1.0/search/gas-stations/by-$hash->{searchby}?latitude=$hash->{latitude}&longitude=$hash->{longitude}&fuelType=$hash->{fuelType}&includeClosed=$hash->{include}";
 	}
+	
+
+	if( $hash->{fuelType} eq "DIE" ) { $fuelType = "Diesel"; }
+	elsif( $hash->{fuelType} eq "SUP" ) { $fuelType = "Super95"; }
+	elsif( $hash->{fuelType} eq "GAS" ) { $fuelType = "Gas"; }
 
 	fhem("attr $hash->{name} userattr stateFormat");
 	fhem("attr $hash->{name} stateFormat guenstigster $fuelType :  € location_01_amount bei location_01_name");
@@ -132,6 +145,7 @@ sub SPRITPREISAUT_ParseJSONResponse($) {
 		
 	my $decoded = decode_json($data);
 	
+	# hardcoded 5 items, need length of $decoded array.
 	for( my $i = 0; $i < 5; $i++ ) {
 		my $j          = $i + 1;
 		my $locname    = encode('UTF-8',$decoded->[$i]->{'name'});
