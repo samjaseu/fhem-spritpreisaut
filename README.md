@@ -6,7 +6,7 @@ This module adds information about fuel prices getting pulled from spritpreisrec
 - In the first version you'll be able to get informations limited by regions.
 - Getting help about finding your region you can go to [samjas projects](http://www.wegscheider-it.com/projects/spritpreisaut/), for fhem command too.
 
-This module is still under development.
+This module is still under development, the projects site too =)
 
 
 ## Installation
@@ -21,6 +21,7 @@ update all spritpreisaut
 ### Define
 ```
 define <name> SPRITPREISAUT <searchby> <regioncode> <regiontype> <fueltype> <includeclosed> <interval>
+define <name> SPRITPREISAUT <searchby> <latitude> <longitude> <fueltype> <includeclosed> <interval>
 ```
 #### Example
 ```
@@ -28,14 +29,23 @@ define Tanken.Diesel.Tulln SPRITPREISAUT region 321 PB DIE false 3600
 attr Tanken.Diesel.Tulln group Tanken
 attr Tanken.Diesel.Tulln icon gasoline
 attr Tanken.Diesel.Tulln room OUTDOOR
+
+define Tanken.Diesel.SitzenbergReidling SPRITPREISAUT address 48.2722 15.8917 DIE false 3600
 ```
 
 
 ## TODO
 
-- 0.2: adding support for by-address search with longitude/latitude.
-- 0.3: add enableControlSet support and others.
-- 1.0: I guess getting better in perl programming and clean up my mess I did there =)
+- [x] 0.2: adding support for by-address search with longitude/latitude.
+- [ ] 0.3: add enableControlSet support and others.
+- [ ] 1.0: I guess getting better in perl programming and clean up my mess I did there =)
+
+
+## Changelog
+### 0.2
+- added support for by-address search with longitude/latitude.
+### 0.1
+- first kermit =)
 
 
 ## License

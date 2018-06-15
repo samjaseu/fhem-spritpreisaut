@@ -8,8 +8,6 @@ for file in FHEM/*;
    echo ${out} >> controls_spritpreisaut.txt
 done
 
-exit
-
 # CHANGED file
 echo "FHEM SPRITPREISAUT last changes:" > CHANGED
 echo $(date +"%Y-%m-%d") >> CHANGED
