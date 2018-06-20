@@ -6,6 +6,15 @@
 #  contact@samjas.eu
 #
 #
+##################################################
+#
+# Changelog:
+#       0.1  first version - static readin with region code only
+#       0.2  added support for by-address search with longitude/latitude.
+#       0.3  added enableControlSet support - set interval, reread, start and stop.
+#       0.4  added attribute 'spritattrlist' to use as variable list for more reading infos.
+#            supported values: latitude,longitude,telephone,fax,mail,website
+#
 
 
 use strict;
@@ -18,7 +27,7 @@ use Encode qw(
 );
 
 
-my $moduleversion = "0.3";
+my $moduleversion = "0.4";
 
 
 # Initialize
@@ -34,8 +43,18 @@ sub SPRITPREISAUT_Initialize($$) {
 
 	my @attrList = qw(
 		enableControlSet:0,1
+		spritattrlist:textField
   );
   $hash->{AttrList} = join(" ", @attrList)." $readingFnAttributes";
+
+	my @spritattrliste = qw(
+		latitude
+		longitude
+		telephone
+		fax
+		mail
+		website
+	);
 }
 
 
@@ -47,15 +66,16 @@ sub SPRITPREISAUT_Define() {
 
 	if(int(@args) < 8) {
 		if($args[2] eq "address") {
-			return "too few parameters: define <name> SPRITPREISAUT <searchby> <latitude> <longitude> <fuelType> <include> <interval>";
+			return "too few parameters: define <name> SPRITPREISAUT <searchby>",
+						 " <latitude> <longitude> <fuelType> <include> <interval>";
 		} elsif($args[2] eq "region") {
-			return "too few parameters: define <name> SPRITPREISAUT <searchby> <code> <type> <fuelType> <include> <interval>";
+			return "too few parameters: define <name> SPRITPREISAUT <searchby>",
+						 " <code> <type> <fuelType> <include> <interval>";
 		}
 	}
 
-
-	my $fuelType = "";
-	my $dt       = gettimeofday();
+	my $fuelType           = "";
+	my $dt                 = gettimeofday();
 
 	$hash->{ModuleVersion} = $moduleversion;
 	$hash->{DEFINETIME}    = $dt;
@@ -64,23 +84,22 @@ sub SPRITPREISAUT_Define() {
 	$hash->{searchby}      = $args[2];
 
 	if($hash->{searchby} eq "region") {
-		$hash->{code}      = $args[3];
-		$hash->{type}      = $args[4];
-		$hash->{fuelType}  = $args[5];
-		$hash->{include}   = $args[6];
-		$hash->{Interval}  = $args[7];
+		$hash->{code}        = $args[3];
+		$hash->{type}        = $args[4];
+		$hash->{fuelType}    = $args[5];
+		$hash->{include}     = $args[6];
+		$hash->{Interval}    = $args[7];
 
-		$hash->{MainURL}   = "https://api.e-control.at/sprit/1.0/search/gas-stations/by-$hash->{searchby}?code=$hash->{code}&type=$hash->{type}&fuelType=$hash->{fuelType}&includeClosed=$hash->{include}";
+		$hash->{MainURL}     = "https://api.e-control.at/sprit/1.0/search/gas-stations/by-$hash->{searchby}?code=$hash->{code}&type=$hash->{type}&fuelType=$hash->{fuelType}&includeClosed=$hash->{include}";
 	} elsif($hash->{searchby} eq "address") {
-		$hash->{latitude}  = $args[3];
-		$hash->{longitude} = $args[4];
-		$hash->{fuelType}  = $args[5];
-		$hash->{include}   = $args[6];
-		$hash->{Interval}  = $args[7];
+		$hash->{latitude}    = $args[3];
+		$hash->{longitude}   = $args[4];
+		$hash->{fuelType}    = $args[5];
+		$hash->{include}     = $args[6];
+		$hash->{Interval}    = $args[7];
 
-		$hash->{MainURL}   = "https://api.e-control.at/sprit/1.0/search/gas-stations/by-$hash->{searchby}?latitude=$hash->{latitude}&longitude=$hash->{longitude}&fuelType=$hash->{fuelType}&includeClosed=$hash->{include}";
+		$hash->{MainURL}     = "https://api.e-control.at/sprit/1.0/search/gas-stations/by-$hash->{searchby}?latitude=$hash->{latitude}&longitude=$hash->{longitude}&fuelType=$hash->{fuelType}&includeClosed=$hash->{include}";
 	}
-
 
 	if( $hash->{fuelType} eq "DIE" ) { $fuelType = "Diesel"; }
 	elsif( $hash->{fuelType} eq "SUP" ) { $fuelType = "Super95"; }
@@ -89,13 +108,13 @@ sub SPRITPREISAUT_Define() {
 	fhem("attr $hash->{name} userattr stateFormat");
 	fhem("attr $hash->{name} stateFormat guenstigster $fuelType :  € location_01_amount bei location_01_name");
 
-	# SPRITPREISAUT_GetUpdate($hash);
+
 	SPRITPREISAUT_SetTimer($hash, 2);
 
 
-  $hash->{".getList"}    = "";
-  $hash->{".setList"}    = "";
-  $hash->{".updateHintList"}    = 1;
+  $hash->{".getList"}          = "";
+  $hash->{".setList"}          = "";
+  $hash->{".updateHintList"}   = 1;
 
 	return undef;
 }
@@ -111,12 +130,12 @@ sub SPRITPREISAUT_Set($@) {
 		my $setVal = (@setValArr ? join(' ', @setValArr) : "");
 		my (%rmap, $setNum, $setOpt, $rawVal);
 
-		if (AttrVal($name, "enableControlSet", undef)) {
-					my $error = SPRITPREISAUT_ControlSet($hash, $setName, $setVal);
+		if(AttrVal($name, "enableControlSet", undef)) {
+			my $error = SPRITPREISAUT_ControlSet($hash, $setName, $setVal);
 
-					return undef if (defined($error) && $error eq "0");
-					return $error if ($error);
-			}
+			return undef if (defined($error) && $error eq "0");
+			return $error if ($error);
+		}
 
 		foreach my $aName (keys %{$attr{$name}}) {
 			if ($aName =~ /^set([0-9]+)Name$/) {
@@ -127,10 +146,10 @@ sub SPRITPREISAUT_Set($@) {
 		}
 
 		if(!defined ($setNum)) {
-					if ($hash->{".updateHintList"}) { SPRITPREISAUT_UpdateHintList($hash); }
+				if($hash->{".updateHintList"}) { SPRITPREISAUT_UpdateHintList($hash); }
 
-					return "Unknown argument $setName, choose one of " . $hash->{".setList"};
-			}
+				return "Unknown argument $setName, choose one of " . $hash->{".setList"};
+		}
 
 		return undef;
 }
@@ -146,10 +165,10 @@ sub SPRITPREISAUT_Get($@) {
 	my $getVal = (@getValArr ? join(' ', @getValArr) : "");
 	my $getNum;
 
-if(!defined ($getNum)) {
-			if ($hash->{".updateHintList"}) { SPRITPREISAUT_UpdateHintList($hash) };
+	if(!defined ($getNum)) {
+		if($hash->{".updateHintList"}) { SPRITPREISAUT_UpdateHintList($hash) };
 
-			return "Unknown argument $getName, choose one of " . $hash->{".getList"};
+		return "Unknown argument $getName, choose one of " . $hash->{".getList"};
 	}
 }
 
@@ -160,9 +179,13 @@ sub SPRITPREISAUT_Attr($$$$) {
 	my ($command, $name, $attribute, $value) = @_;
 	my $hash = $defs{$name};
 
-	if ($attribute =~ /^[gs]et/ || $attribute eq "enableControlSet") {
-        $hash->{".updateHintList"} = 1;
-    }
+	if($attribute =~ /^[gs]et/ || $attribute eq "enableControlSet") {
+		$hash->{".updateHintList"} = 1;
+  }
+
+	if($attribute eq "spritattrlist") {
+		SPRITPREISAUT_SetTimer($hash, 2);
+	}
 
 	return undef;
 }
@@ -180,6 +203,9 @@ sub SPRITPREISAUT_Undef($$$$) {
 
 	return undef;
 }
+
+
+
 
 
 # PerformHttpRequest
@@ -213,20 +239,15 @@ sub SPRITPREISAUT_ParseHttpResponse($) {
         Log3 $name, 3, "error while requesting " . $param->{url} . " - $err";
         readingsSingleUpdate($hash, "fullResponse", "ERROR", 0);
     } elsif($data ne "") {
-        # Log3 $name, 3, "MainURL ".$param->{MainURL}." returned: $data";
 				my $param = {
 					hash	=> $hash,
 					data	=> $data
 				};
-				SPRITPREISAUT_ParseJSONResponse($param);
 
-		    readingsSingleUpdate($hash, "fullResponse", $data, 0);
+				readingsSingleUpdate($hash, "fullResponse", $data, 0);
+				SPRITPREISAUT_ParseJSONResponse($param);
     }
 }
-
-
-
-
 
 
 # ParseJSONResponse
@@ -237,22 +258,58 @@ sub SPRITPREISAUT_ParseJSONResponse($) {
 	my $data = $param->{data};
 	my $name = $hash->{name};
 
+  my $readingstimestamp = ReadingsTimestamp($name, "fullResponse", "0000-00-00 00:00:00");
 	my $decoded = decode_json($data);
 
 	# hardcoded 5 items, max. results with price amount.
 	for( my $i = 0; $i < 5; $i++ ) {
 		my $j          = $i + 1;
 		my $locname    = encode('UTF8',$decoded->[$i]->{'name'});
-		my $locaddress = encode('UTF8',$decoded->[$i]->{"location"}->{"address"});
-		my $loccity    = encode('UTF8',$decoded->[$i]->{"location"}->{"city"});
+		my $locaddress = encode('UTF8',$decoded->[$i]->{'location'}->{'address'});
+		my $loccity    = encode('UTF8',$decoded->[$i]->{'location'}->{'city'});
 
 		readingsSingleUpdate($hash, "location_0".$j."_id", $decoded->[$i]->{'id'}, 0);
 		readingsSingleUpdate($hash, "location_0".$j."_name", $locname, 0);
 		readingsSingleUpdate($hash, "location_0".$j."_address", $locaddress, 0);
-		readingsSingleUpdate($hash, "location_0".$j."_postalcode", $decoded->[$i]->{"location"}->{"postalCode"}, 0);
+		readingsSingleUpdate($hash, "location_0".$j."_postalcode", $decoded->[$i]->{'location'}->{'postalCode'}, 0);
 		readingsSingleUpdate($hash, "location_0".$j."_city", $loccity, 0);
-		readingsSingleUpdate($hash, "location_0".$j."_amount", $decoded->[$i]->{"prices"}->[0]->{"amount"}, 0);
-	}
+		readingsSingleUpdate($hash, "location_0".$j."_amount", $decoded->[$i]->{'prices'}->[0]->{'amount'}, 0);
+
+		SPRITPREISAUT_DeleteOldReadings($hash, $readingstimestamp);
+
+		if(AttrVal($name, 'spritattrlist', undef)) {
+			my @spritAttrVals = split(',', AttrVal($name, 'spritattrlist', undef));
+			foreach my $spritAttrVal (@spritAttrVals) {
+				my $AttrReadingVal = "";
+				given($spritAttrVal) {
+					when($_ eq "latitude") {
+						$AttrReadingVal = $decoded->[$i]->{'location'}->{'latitude'};
+					}
+					when($_ eq "longitude") {
+						$AttrReadingVal = $decoded->[$i]->{'location'}->{'longitude'};
+					}
+					when($_ eq "telephone") {
+						$AttrReadingVal = $decoded->[$i]->{'contact'}->{'telephone'};
+					}
+					when($_ eq "fax") {
+						$AttrReadingVal = $decoded->[$i]->{'contact'}->{'fax'};
+					}
+					when($_ eq "mail") {
+						$AttrReadingVal = $decoded->[$i]->{'contact'}->{'mail'};
+					}
+					when($_ eq "website") {
+						$AttrReadingVal = $decoded->[$i]->{'contact'}->{'website'};
+					}
+					default {
+						readingsSingleUpdate($hash, "error_attribute_".$spritAttrVal, "Attribut 'spritattrlist' unterstützt Value '".$spritAttrVal."' NICHT!", 0);
+						$AttrReadingVal = "";
+					}
+				}
+				readingsSingleUpdate($hash, "location_0".$j."_".$spritAttrVal, $AttrReadingVal, 0) if ($AttrReadingVal);
+			}
+		}
+
+	} # for
 
 	return undef;
 }
@@ -320,9 +377,7 @@ sub SPRITPREISAUT_ControlSet($$$) {
 ##################################################
 sub SPRITPREISAUT_GetUpdate($) {
 	my ($calltype, $name) = split(':', $_[0]);
-
 	my $hash = $defs{$name};
-	# my ($url, $header, $data, $count);
 
 	my $now = gettimeofday();
 	my $fmt = FmtDateTime($now);
@@ -370,18 +425,19 @@ sub SPRITPREISAUT_SetTimer($;$) {
 }
 
 
-# UpdateHintList
+# DeleteOldReadings
 ##################################################
-sub SPRITPREISAUT_UpdateHintList($) {
-	my ($hash) = @_;
+sub SPRITPREISAUT_DeleteOldReadings($$) {
+	my ($hash,$timestamp) = @_;
 	my $name = $hash->{name};
+	my $readings = $hash->{READINGS};
+	return if (!$readings);
 
-	$hash->{".getlist"} = "";
-	if (AttrVal($name, "enableControlSet", undef)) {
-        $hash->{".setList"} = "interval reread:noArg stop:noArg start:noArg ";
-    } else {
-        $hash->{".setList"} = "";
-    }
+	foreach my $reading (sort keys %{$readings}) {
+		if(ReadingsTimestamp($name, $reading, "0000-00-00 00:00:00") ne $timestamp) {
+			readingsDelete($hash, $reading);
+		}
+	}
 
 	return undef;
 }

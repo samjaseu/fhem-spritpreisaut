@@ -34,9 +34,23 @@ attr Tanken.Diesel.Tulln room OUTDOOR
 
 define Tanken.Diesel.SitzenbergReidling SPRITPREISAUT address 48.2722 15.8917 DIE false 3600
 ```
+#### Attribut spritattrlist
+```
+attr Tanken.Diesel.SitzenbergReidling spritattrlist latitude,longitude,telephone,fax,mail,website
+```
 
 
-## Changelog
+## Changelogs
+### 0.4
+- added attribute 'spritattrlist' to use as variable list for more reading infos.
+- attribute must be comma separated.
+- supported values:
+  - latitude
+  - longitude
+  - telephone
+  - fax
+  - mail
+  - website
 ### 0.3
 - added enableControlSet support.
   - interval
@@ -53,6 +67,7 @@ define Tanken.Diesel.SitzenbergReidling SPRITPREISAUT address 48.2722 15.8917 DI
 
 - [x] 0.2: adding support for by-address search with longitude/latitude.
 - [x] 0.3: add enableControlSet support and others.
+- [x] 0.4: add user defined attribute for more readings.
 - [ ] 1.0: I guess getting better in perl programming and clean up my mess I did there =)
 
 
