@@ -14,6 +14,7 @@
 #       0.3  added enableControlSet support - set interval, reread, start and stop.
 #       0.4  added attribute 'spritattrlist' to use as variable list for more reading infos.
 #            supported values: latitude,longitude,telephone,fax,mail,website
+#     0.4.1  small adjustments on switch-given and AttrList usage.
 #
 
 
@@ -25,9 +26,11 @@ use Encode qw(
 		decode
 		encode
 );
+use experimental qw( switch );
 
 
-my $moduleversion = "0.4";
+
+my $moduleversion = "0.4.1";
 
 
 # Initialize
@@ -41,11 +44,9 @@ sub SPRITPREISAUT_Initialize($$) {
 	$hash->{AttrFn}     = 'SPRITPREISAUT_Attr';
 	$hash->{UndefFn}    = 'SPRITPREISAUT_Undef';
 
-	my @attrList = qw(
-		enableControlSet:0,1
-		spritattrlist:textField
-  );
-  $hash->{AttrList} = join(" ", @attrList)." $readingFnAttributes";
+	$hash->{AttrList} = "enableControlSet:0,1 "
+		."spritattrlist:textField "
+		.$readingFnAttributes;
 
 	my @spritattrliste = qw(
 		latitude
